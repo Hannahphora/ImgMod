@@ -30,12 +30,13 @@ int main(int argC, char* argV[]) {
         -1, -1, -1
     };
 
+    // TODO: replace wraparound edge handling with extend
+
     uint8_t* window[kW * kH];
     int dx = kW / 2, dy = kH / 2;
-
     for (int y = -dy; y <= dy; y++) {
         for (int x = -dx; x <= dx; x++) {
-            window[y * kW + x] = img;
+            window[(y + dy) * kW + (x + dy)] = img + ((y % h) * w + (x % w));
         }
     }
 

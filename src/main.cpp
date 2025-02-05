@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <cstdlib>
 #include <iostream>
 
@@ -12,7 +13,7 @@ int main(int argc, char** argv) {
     
     //if (argc < 3) {
     //    std::cerr << "Usage: " << argv[0] << " <input> <output>\n";
-    //    return 1;
+    //    return -1;
     //}
     //const char* inPath = argv[1];
     //const char* outPath = argv[2];
@@ -28,9 +29,6 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    // FORMULA FOR FLAT 2D ARRAY ACCESS:
-    // array[y * width + x]
-
     float laplacian[] = {
         -1, -1, -1,
         -1,  8, -1,
@@ -41,14 +39,6 @@ int main(int argc, char** argv) {
         1 / 16.f, 1 /  8.f, 1 / 16.f, 
         1 /  8.f, 1 /  4.f, 1 /  8.f, 
         1 / 16.f, 1 /  8.f, 1 / 16.f,
-    };
-
-    float gaussian5[] = {
-        0.00292, 0.01306, 0.02154, 0.01306, 0.00292,
-        0.01306, 0.05855, 0.09653, 0.05855, 0.01306,
-        0.02154, 0.09653, 0.15915, 0.09653, 0.02154,
-        0.01306, 0.05855, 0.09653, 0.05855, 0.01306,
-        0.00292, 0.01306, 0.02154, 0.01306, 0.00292
     };
 
     auto output = Convolve(img, w, h, chn, laplacian, 3, 3);
@@ -77,7 +67,7 @@ uint8_t* Convolve(uint8_t* img, int w, int h, int chn, float* kernel, int kW, in
 
                 float sum = 0.f;
 
-                // iterate over kernel, calculating sum
+                // iterate over kernel, convolving kernel with img into sum
                 for (int ky = -dy; ky <= dy; ky++) {
                     for (int kx = -dx; kx <= dx; kx++) {
 
@@ -88,8 +78,8 @@ uint8_t* Convolve(uint8_t* img, int w, int h, int chn, float* kernel, int kW, in
                     }
                 }
 
-                // set val in output buf, for current pixel and channel
-                output[chn * (y * w + x) + c] = std::min(std::max(int(sum), 0), 255);
+                // set val in output buf to sum, for current pixel and channel
+                output[chn * (y * w + x) + c] = std::min(std::max((int)sum, 0), 255);
             }
         }
     }

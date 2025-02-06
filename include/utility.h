@@ -13,6 +13,7 @@ struct State {
 	int w{}, h{}, comp{};
 	uint8_t* img{};
 	State(const char* i, const char* o) : inPath(i), outPath(o) {}
+	~State() { delete[] img; }
 };
 
 class Menu {
@@ -25,7 +26,6 @@ public:
 	};
 
 	Menu(Opts(&menuOpts)[], size_t menuLen, State& state);
-	~Menu();
 
 	void Run();
 

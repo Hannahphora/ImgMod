@@ -9,10 +9,6 @@
 Menu::Menu(Opts(&menuOpts)[], size_t menuLen, State& state)
 	: m_arr(menuOpts), m_len(menuLen), m_state(state) {}
 
-Menu::~Menu() {
-	delete[] m_state.img;
-}
-
 void Menu::Run() {
 
 	CursorVis(false);

@@ -93,21 +93,32 @@ void _RGBtoGrayscale(uint8_t* img, int w, int h) {
 }
 
 void ConvGaussian(State& s) {
+    printf("|| Gaussian Convolution\n\n");
     const int kS = 15;
+    float sigma = 1.f;
+    printf("Kernel size: %d\n", kS);
+    printf("Kernel weight: %f\n\n", sigma);
+    system("pause");
+    printf("\nGenerating kernel...\n");
     float* k = new float[kS * kS];
-    _CalcGaussianKernel(k, kS, kS, 1.f);
+    _CalcGaussianKernel(k, kS, kS, sigma);
     uint8_t* tempBuf = new uint8_t[s.w * s.h * NUM_CHNS];
+    printf("Convolving image...\n\n");
     _Convolve(s.img, tempBuf, s.w, s.h, k, kS, kS);
     delete[] s.img, k;
     s.img = tempBuf;
 }
+
 void ConvLaplacian(State& s) {
+    printf("|| Laplacian Convolution\n\n");
     float k[] = { -1, -1, -1, -1,  8, -1, -1, -1, -1 };
     uint8_t* tempBuf = new uint8_t[s.w * s.h * NUM_CHNS];
+    printf("Convolving image...\n\n");
     _Convolve(s.img, tempBuf, s.w, s.h, k, 3, 3);
     delete[] s.img;
     s.img = tempBuf;
 }
+
 void _Convolve(uint8_t* img, uint8_t* out, int w, int h, float* kernel, int kW, int kH) {
     int dx = kW / 2, dy = kH / 2;
     // iterate pxls in img

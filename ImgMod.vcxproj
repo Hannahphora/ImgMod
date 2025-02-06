@@ -135,8 +135,10 @@
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="src\utility.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\utility.h" />
     <ClInclude Include="include\stb_image.h" />
     <ClInclude Include="include\stb_image_write.h" />
   </ItemGroup>

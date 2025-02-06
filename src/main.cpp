@@ -9,12 +9,21 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../include/stb_image_write.h"
 
+#include "../include/utility.h"
+
 #define NUM_CHNS 3
 
-void Invert(uint8_t* img, int w, int h);
-void Convolve(uint8_t* in, uint8_t* out, int w, int h, float* kernel, int kW, int kH);
-void RGBtoGrayscale(uint8_t* img, int w, int h);
-void CalcGaussianKernel(float* k, int w, int h, float sigma);
+void _Invert(uint8_t* img, int w, int h);
+void _Convolve(uint8_t* img, uint8_t* out, int w, int h, float* kernel, int kW, int kH);
+void _RGBtoGrayscale(uint8_t* img, int w, int h);
+void _CalcGaussianKernel(float* k, int w, int h, float sigma);
+
+void Invert(State& s);
+void RGBtoGrayscale(State& s);
+void Save(State& s);
+void ConvLaplacian(State& s);
+void ConvGaussian(State& s);
+void Exit(State& s) {}
 
 int main(int argc, char** argv) {
     
@@ -25,46 +34,35 @@ int main(int argc, char** argv) {
     //const char* inPath = argv[1];
     //const char* outPath = argv[2];
 
-    const char* inPath = "res/space.jpg";
-    const char* outPath = "res/space_out.png";
-
-    int w, h, comp;
-    uint8_t* img = stbi_load(inPath, &w, &h, &comp, NUM_CHNS);
-    if (!img) {
+    // create state
+    State s("res/space.jpg", "res/space_out.png");
+    
+    // load img
+    s.img = stbi_load(s.inPath, &s.w, &s.h, &s.comp, NUM_CHNS);
+    if (!s.img) {
         std::cerr << "Failed to load image.\n";
         return -1;
     }
 
-    // grayscale conversion
-    RGBtoGrayscale(img, w, h);
+    // init menu
+    Menu::Opts mOpts[] = {
+        FN_DEF(Invert, true)
+        FN_DEF(RGBtoGrayscale, true)
+        FN_DEF(ConvGaussian, true)
+        FN_DEF(ConvLaplacian, true)
+        FN_DEF(Save, false)
+        FN_DEF(Exit, false)
+    };
+    Menu menu = Menu(mOpts, 6, s);
+    menu.Run();
 
-    { // gaussian convolve
-        const int kS = 20;
-        float k[kS * kS];
-        CalcGaussianKernel(k, kS, kS, 1.f);
-        uint8_t* tempBuf = new uint8_t[w * h * NUM_CHNS];
-        Convolve(img, tempBuf, w, h, k, kS, kS);
-        delete[] img;
-        img = tempBuf;
-    }
-
-    { // laplacian convolve
-        float k[] = { -1, -1, -1, -1,  8, -1, -1, -1, -1 };
-        uint8_t* tempBuf = new uint8_t[w * h * NUM_CHNS];
-        Convolve(img, tempBuf, w, h, k, 3, 3);
-        delete[] img;
-        img = tempBuf;
-    }
-
-    // Invert(img, w, h);
-
-    // write output & cleanup
-    stbi_write_png(outPath, w, h, NUM_CHNS, img, w * NUM_CHNS);
-    stbi_image_free(img);
 	return 0;
 }
 
-void Invert(uint8_t* img, int w, int h) {
+void Save(State& s) { stbi_write_png(s.outPath, s.w, s.h, NUM_CHNS, s.img, s.w * NUM_CHNS); }
+
+void Invert(State& s) { _Invert(s.img, s.w, s.h); }
+void _Invert(uint8_t* img, int w, int h) {
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
             for (int c = 0; c < 3; c++) {
@@ -74,7 +72,8 @@ void Invert(uint8_t* img, int w, int h) {
     }
 }
 
-void RGBtoGrayscale(uint8_t* img, int w, int h) {
+void RGBtoGrayscale(State& s) { _RGBtoGrayscale(s.img, s.w, s.h); }
+void _RGBtoGrayscale(uint8_t* img, int w, int h) {
     // iterate pxls in img
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
@@ -93,7 +92,23 @@ void RGBtoGrayscale(uint8_t* img, int w, int h) {
     }
 }
 
-void Convolve(uint8_t* in, uint8_t* out, int w, int h, float* kernel, int kW, int kH) {
+void ConvGaussian(State& s) {
+    const int kS = 15;
+    float* k = new float[kS * kS];
+    _CalcGaussianKernel(k, kS, kS, 1.f);
+    uint8_t* tempBuf = new uint8_t[s.w * s.h * NUM_CHNS];
+    _Convolve(s.img, tempBuf, s.w, s.h, k, kS, kS);
+    delete[] s.img, k;
+    s.img = tempBuf;
+}
+void ConvLaplacian(State& s) {
+    float k[] = { -1, -1, -1, -1,  8, -1, -1, -1, -1 };
+    uint8_t* tempBuf = new uint8_t[s.w * s.h * NUM_CHNS];
+    _Convolve(s.img, tempBuf, s.w, s.h, k, 3, 3);
+    delete[] s.img;
+    s.img = tempBuf;
+}
+void _Convolve(uint8_t* img, uint8_t* out, int w, int h, float* kernel, int kW, int kH) {
     int dx = kW / 2, dy = kH / 2;
     // iterate pxls in img
     for (int y = 0; y < h; y++) {
@@ -106,7 +121,7 @@ void Convolve(uint8_t* in, uint8_t* out, int w, int h, float* kernel, int kW, in
                     for (int kx = -dx; kx <= dx; kx++) {
                         int ny = std::min(std::max(y + ky, 0), h - 1);
                         int nx = std::min(std::max(x + kx, 0), w - 1);
-                        sum += in[NUM_CHNS * (ny * w + nx) + c] * kernel[(ky + dy) * kW + (kx + dx)];
+                        sum += img[NUM_CHNS * (ny * w + nx) + c] * kernel[(ky + dy) * kW + (kx + dx)];
                     }
                 }
                 // set val in output buf to sum, for current pixel and channel
@@ -116,10 +131,10 @@ void Convolve(uint8_t* in, uint8_t* out, int w, int h, float* kernel, int kW, in
     }
 }
 
-void CalcGaussianKernel(float* k, int w, int h, float sigma) {
+void _CalcGaussianKernel(float* k, int w, int h, float sigma) {
     int dx = w / 2, dy = h / 2;
     float s = 2.f * sigma * sigma, sum = 0.f;
-    // generate kernel
+    // generate
     for (int y = -dy; y <= dy; y++) {
         for (int x = -dx; x <= dx; x++) {
             float r = sqrt(x * x + y * y);
@@ -127,7 +142,7 @@ void CalcGaussianKernel(float* k, int w, int h, float sigma) {
             sum += k[(y + dy) * w + (x + dx)];
         }
     }
-    // normalise kernel
+    // normalise
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
             k[y * w + x] /= sum;

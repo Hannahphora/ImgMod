@@ -17,25 +17,22 @@ void _Invert(uint8_t* img, int w, int h);
 void _Convolve(uint8_t* img, uint8_t* out, int w, int h, float* kernel, int kW, int kH);
 void _RGBtoGrayscale(uint8_t* img, int w, int h);
 void _CalcGaussianKernel(float* k, int w, int h, float sigma);
+void _Diff(uint8_t* img1, uint8_t* img2, uint8_t* out, int w, int h);
 
 void Invert(State& s);
 void RGBtoGrayscale(State& s);
-void Save(State& s);
+void ConvSharpen(State& s);
+void ConvTest(State& s);
 void ConvLaplacian(State& s);
 void ConvGaussian(State& s);
+void DiffOfGaussians(State& s);
+void Save(State& s);
 void Exit(State& s) {}
 
 int main(int argc, char** argv) {
     
-    //if (argc < 3) {
-    //    std::cerr << "Usage: " << argv[0] << " <input> <output>\n";
-    //    return -1;
-    //}
-    //const char* inPath = argv[1];
-    //const char* outPath = argv[2];
-
     // create state
-    State s("res/space.jpg", "res/space_out.png");
+    State s("res/brisket.jpg", "res/brisket_out.png");
     
     // load img
     s.img = stbi_load(s.inPath, &s.w, &s.h, &s.comp, NUM_CHNS);
@@ -48,12 +45,15 @@ int main(int argc, char** argv) {
     Menu::Opts mOpts[] = {
         FN_DEF(Invert, true)
         FN_DEF(RGBtoGrayscale, true)
+        FN_DEF(ConvSharpen, true)
+        FN_DEF(ConvTest, true)
         FN_DEF(ConvGaussian, true)
         FN_DEF(ConvLaplacian, true)
+        FN_DEF(DiffOfGaussians, true)
         FN_DEF(Save, false)
         FN_DEF(Exit, false)
     };
-    Menu menu = Menu(mOpts, 6, s);
+    Menu menu = Menu(mOpts, 9, s);
     menu.Run();
 
 	return 0;
@@ -97,8 +97,7 @@ void ConvGaussian(State& s) {
     const int kS = 15;
     float sigma = 1.f;
     printf("Kernel size: %d\n", kS);
-    printf("Kernel weight: %f\n\n", sigma);
-    system("pause");
+    printf("Kernel weight: %f\n", sigma);
     printf("\nGenerating kernel...\n");
     float* k = new float[kS * kS];
     _CalcGaussianKernel(k, kS, kS, sigma);
@@ -117,6 +116,69 @@ void ConvLaplacian(State& s) {
     _Convolve(s.img, tempBuf, s.w, s.h, k, 3, 3);
     delete[] s.img;
     s.img = tempBuf;
+}
+
+void ConvSharpen(State& s) {
+    printf("|| Sharpen Convolution\n\n");
+    float k[] = { 0, -1, 0, -1,  5, -1, 0, -1, 0 };
+    uint8_t* tempBuf = new uint8_t[s.w * s.h * NUM_CHNS];
+    printf("Convolving image...\n\n");
+    _Convolve(s.img, tempBuf, s.w, s.h, k, 3, 3);
+    delete[] s.img;
+    s.img = tempBuf;
+}
+
+void ConvTest(State& s) {
+    printf("|| Test Convolution\n\n");
+    float k[] = {
+         -1, -1, -1, -1, -1,
+          2,  2,  2,  2,  2,
+          2,  2 , 2,  2,  2,
+          2 , 2,  2,  2,  2,
+         -1, -1, -1, -1, -1,
+    };
+    uint8_t* tempBuf = new uint8_t[s.w * s.h * NUM_CHNS];
+    printf("Convolving image...\n\n");
+    _Convolve(s.img, tempBuf, s.w, s.h, k, 5, 5);
+    delete[] s.img;
+    s.img = tempBuf;
+}
+
+void DiffOfGaussians(State& s) {
+    printf("|| Difference Of Gaussians\n\n");
+
+    const int k1Size = 5, k2Size = 15;
+    float k1Sigma = 1.f, k2Sigma = 0.3f;
+    printf("Kernel 1 size: %d\n", k1Size);
+    printf("Kernel 1 weight: %.1f\n", k1Sigma);
+    printf("Kernel 2 size: %d\n", k2Size);
+    printf("Kernel 1 weight: %.1f\n", k2Sigma);
+
+    printf("\nGenerating kernels...\n");
+    float* k1 = new float[k1Size * k1Size];
+    float* k2 = new float[k2Size * k2Size];
+    _CalcGaussianKernel(k1, k1Size, k1Size, k1Sigma);
+    _CalcGaussianKernel(k2, k2Size, k2Size, k2Sigma);
+
+    printf("Convolving images...\n\n");
+    uint8_t* temp1 = new uint8_t[s.w * s.h * NUM_CHNS];
+    uint8_t* temp2 = new uint8_t[s.w * s.h * NUM_CHNS];
+    _Convolve(s.img, temp1, s.w, s.h, k1, k1Size, k1Size);
+    _Convolve(s.img, temp2, s.w, s.h, k2, k2Size, k2Size);
+
+    printf("Calculating difference...\n\n");
+    _Diff(temp1, temp2, s.img, s.w, s.h);
+    delete[] temp1, temp2, k1, k2;
+}
+
+void _Diff(uint8_t* img1, uint8_t* img2, uint8_t* out, int w, int h) {
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            for (int c = 0; c < 3; c++) {
+                out[NUM_CHNS * (y * w + x) + c] = (uint8_t)std::min(std::max(img1[NUM_CHNS * (y * w + x) + c] - img2[NUM_CHNS * (y * w + x) + c], 0), 255);
+            }
+        }
+    }
 }
 
 void _Convolve(uint8_t* img, uint8_t* out, int w, int h, float* kernel, int kW, int kH) {

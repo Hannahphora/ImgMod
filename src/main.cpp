@@ -22,7 +22,6 @@ void _Diff(uint8_t* img1, uint8_t* img2, uint8_t* out, int w, int h);
 void Invert(State& s);
 void RGBtoGrayscale(State& s);
 void ConvSharpen(State& s);
-void ConvTest(State& s);
 void ConvLaplacian(State& s);
 void ConvGaussian(State& s);
 void DiffOfGaussians(State& s);
@@ -46,14 +45,13 @@ int main(int argc, char** argv) {
         FN_DEF(Invert, true)
         FN_DEF(RGBtoGrayscale, true)
         FN_DEF(ConvSharpen, true)
-        FN_DEF(ConvTest, true)
         FN_DEF(ConvGaussian, true)
         FN_DEF(ConvLaplacian, true)
         FN_DEF(DiffOfGaussians, true)
         FN_DEF(Save, false)
         FN_DEF(Exit, false)
     };
-    Menu menu = Menu(mOpts, 9, s);
+    Menu menu = Menu(mOpts, 8, s);
     menu.Run();
 
 	return 0;
@@ -94,6 +92,7 @@ void _RGBtoGrayscale(uint8_t* img, int w, int h) {
 
 void ConvGaussian(State& s) {
     printf("|| Gaussian Convolution\n\n");
+
     const int kS = 15;
     float sigma = 1.f;
     printf("Kernel size: %d\n", kS);
@@ -101,6 +100,7 @@ void ConvGaussian(State& s) {
     printf("\nGenerating kernel...\n");
     float* k = new float[kS * kS];
     _CalcGaussianKernel(k, kS, kS, sigma);
+
     uint8_t* tempBuf = new uint8_t[s.w * s.h * NUM_CHNS];
     printf("Convolving image...\n\n");
     _Convolve(s.img, tempBuf, s.w, s.h, k, kS, kS);
@@ -128,27 +128,11 @@ void ConvSharpen(State& s) {
     s.img = tempBuf;
 }
 
-void ConvTest(State& s) {
-    printf("|| Test Convolution\n\n");
-    float k[] = {
-         -1, -1, -1, -1, -1,
-          2,  2,  2,  2,  2,
-          2,  2 , 2,  2,  2,
-          2 , 2,  2,  2,  2,
-         -1, -1, -1, -1, -1,
-    };
-    uint8_t* tempBuf = new uint8_t[s.w * s.h * NUM_CHNS];
-    printf("Convolving image...\n\n");
-    _Convolve(s.img, tempBuf, s.w, s.h, k, 5, 5);
-    delete[] s.img;
-    s.img = tempBuf;
-}
-
 void DiffOfGaussians(State& s) {
     printf("|| Difference Of Gaussians\n\n");
 
-    const int k1Size = 5, k2Size = 15;
-    float k1Sigma = 1.f, k2Sigma = 0.3f;
+    const int k1Size = 5, k2Size = 25;
+    float k1Sigma = 0.3f, k2Sigma = 1.0f;
     printf("Kernel 1 size: %d\n", k1Size);
     printf("Kernel 1 weight: %.1f\n", k1Sigma);
     printf("Kernel 2 size: %d\n", k2Size);
